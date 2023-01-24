@@ -3,45 +3,61 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <fstream>
+#include <strstream>
+
 struct vec3d // 3D vector
 {
 	float x, y, z;
 	vec3d operator+ (const vec3d& v)
 	{
-		vec3d result;
-		result.x = v.x + this->x;
-		result.y = v.y + this->y;
-		result.z = v.z + this->z;
-		return result;
+		return CreateVector(this->x + v.x, this->y + v.y, this->z + v.z);
+	}
+
+	vec3d operator- (const vec3d& v)
+	{
+		return CreateVector(this->x - v.x, this->y - v.y, this->z - v.z);
 	}
 
 	vec3d operator* (const float& s)
 	{
-		vec3d result;
-		result.x = s * this->x;
-		result.y = s * this->y;
-		result.z = s * this->z;
-		return result;
+		return CreateVector(this->x * s, this->y * s, this->z * s);
 	}
 
 	vec3d operator+= (const float& s)
 	{
-		vec3d result;
-		result.x += s;
-		result.y += s;
-		result.z += s;
-		return result;
+		return CreateVector(this->x + s, this->y + s, this->z + s);
+	}
+
+private:
+	vec3d CreateVector(float x, float y, float z)
+	{
+		vec3d v;
+		v.x = x;
+		v.y = y;
+		v.z = z;
+		return v;
 	}
 };
 
 struct triangle // Simple triangle containing exactly 3 3D vectors
 {
 	vec3d p[3];
+
+	// Storing the shading
+	wchar_t sym;
+	short col;
 };
 
 struct mesh // Object containing a vector of triangles
 {
 	std::vector<triangle> tris;
+
+	bool LoadFromObjFile(std::string sFilename)
+	{
+
+		return true;
+	};
 };
 
 struct mat4x4 //4x4 Matrix
@@ -77,6 +93,12 @@ struct mat4x4 //4x4 Matrix
 	}
 	
 };
+
+void NormalizeVector(vec3d& v)
+{
+	float l = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+	v.x /= l; v.y /= l; v.z /= l;
+}
 
 void MultiplyVectorMatrix(vec3d& i, vec3d& o, mat4x4& m)
 {
@@ -142,6 +164,40 @@ mat4x4 CreateRotationMatrixX(float fTheta)
 	m.m[2][2] = cosf(fTheta * 0.5f);
 	m.m[3][3] = 1;
 	return m;
+}
+
+vec3d GetLineFromPoints(vec3d p1, vec3d p2)
+{
+	vec3d line;
+	line.x = p2.x - p1.x;
+	line.y = p2.y - p1.y;
+	line.z = p2.z - p1.z;
+	return line;
+}
+
+vec3d ComputeCrossProduct(vec3d v1, vec3d v2)
+{
+	vec3d result;
+	result.x = v1.y * v2.z - v1.z * v2.y;
+	result.y = v1.z * v2.x - v1.x * v2.z;
+	result.z = v1.x * v2.y - v1.y * v2.x;
+	return result;
+}
+
+float ComputeDotProduct(vec3d v1, vec3d v2)
+{
+	float result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+	return result;
+}
+
+vec3d GetTriangleNormal(triangle tri)
+{
+	vec3d normal, line1, line2;
+	line1 = GetLineFromPoints(tri.p[0], tri.p[1]);
+	line2 = GetLineFromPoints(tri.p[0], tri.p[2]);
+	normal = ComputeCrossProduct(line1, line2);
+	NormalizeVector(normal);
+	return normal;
 }
 
 mesh CreateCuboidMesh(vec3d& origin, vec3d& size)

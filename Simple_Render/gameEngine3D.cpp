@@ -16,6 +16,8 @@ public:
 private:
 	mesh meshCube;
 	mat4x4 matProj;
+	vec3d vCamera; // Simplified version of a camera
+	vec3d light_direction; // Simple directional light source
 	float fTheta = 0;
 
 public:
@@ -41,6 +43,8 @@ public:
 		matProj.m[2][3] = 1.0f;
 		matProj.m[3][3] = 0.0f;
 
+		light_direction = { 0.0f, 0.0f, -1.0f }; 
+		NormalizeVector(light_direction);
 
 		return true;
 	}
@@ -75,12 +79,29 @@ public:
 			triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
 			triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
 
-			MultiplyTriangleMatrix(triTranslated, triProjected, matProj);
+			vec3d normal = GetTriangleNormal(triTranslated);
+			if(ComputeDotProduct(normal, (triTranslated.p[0] - vCamera)) < 0.0f)
+			{
+				float light_dp = ComputeDotProduct(normal, light_direction);
 
-			ScaleToScreenSize(triProjected, (float)ScreenWidth(), (float)ScreenHeight());
+				CHAR_INFO c = GetColour(light_dp);
+				triTranslated.col = c.Attributes;
+				triTranslated.sym = c.Char.UnicodeChar;
 
-			DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
-				triProjected.p[2].x, triProjected.p[2].y, PIXEL_SOLID, FG_WHITE);
+				MultiplyTriangleMatrix(triTranslated, triProjected, matProj);
+				triProjected.col = c.Attributes;
+				triProjected.sym = c.Char.UnicodeChar;
+
+				ScaleToScreenSize(triProjected, (float)ScreenWidth(), (float)ScreenHeight());
+
+				FillTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
+					triProjected.p[2].x, triProjected.p[2].y, triProjected.sym, triProjected.col);
+
+				// Keeping this method for debugging purposes
+				// Allows the user to see the wireframe outline of triangles
+				//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
+				//	triProjected.p[2].x, triProjected.p[2].y, PIXEL_SOLID, FG_BLACK);
+			}
 		}
 		return true;
 	}
