@@ -19,7 +19,6 @@ private:
 	mat4x4 matProj;
 	vec3d vCamera; // Simplified version of a camera
 	vec3d light_direction; // Simple directional light source
-	vector<triangle> vecTriangleToRaster;
 	float fTheta = 0;
 
 
@@ -32,22 +31,16 @@ public:
 		//meshDemo = CreateCuboidMesh(origin, size);
 
 		// Loading a .obj file
-		meshDemo.LoadFromObjFile("assets/monkey.obj");
+		meshDemo.LoadFromObjFile("assets/axis.obj");
 
 		// Creating Projection Matrix
 
 		float fNear = 0.1f;
 		float fFar = 1000.0f;
 		float fFov = 90.0f;
-		float fAspectRation = (float)ScreenHeight() / (float)ScreenWidth();
-		float fFovRad = 1.0f / tanf(fFov * 0.5f / 180.0f * 3.14159f);
+		float fAspectRatio = (float)ScreenHeight() / (float)ScreenWidth();
 
-		matProj.m[0][0] = fAspectRation * fFovRad;
-		matProj.m[1][1] = fFovRad;
-		matProj.m[2][2] = fFar / (fFar - fNear);
-		matProj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
-		matProj.m[2][3] = 1.0f;
-		matProj.m[3][3] = 0.0f;
+		matProj = CreateProjectMatrix(fFov, fAspectRatio, fNear, fFar);
 
 		light_direction = { 0.0f, 0.0f, -1.0f }; 
 		NormalizeVector(light_direction);
@@ -60,41 +53,46 @@ public:
 		Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 		
 		mat4x4 matRotZ, matRotX;
-		fTheta += 1.0f * elapsedTime;
+		//fTheta += 1.0f * elapsedTime;
 
-		// Rotate in Z matrix
+		// Rotate in Z
 		matRotZ = CreateRotationMatrixZ(fTheta);
 
-		// Rotate in X matrix
+		// Rotate in X
 		matRotX = CreateRotationMatrixX(fTheta * 2.0f);
 
-		// Translate to (0.5, 0.5, 0.5)
-		vec3d trans = CreateVector(0, 0, -3);
-		mat4x4 matTrans = CreateTranslationMatrix(trans);
+		// Translate matrix
+		mat4x4 matTrans = CreateTranslationMatrix(0.0f, 0.0f, 18.0f);
+
+		mat4x4 matWorld;
+		matWorld = CreateIdentityMatrix();
+		matWorld = matRotZ * matRotX;
+		matWorld = matWorld * matTrans;
+
+		// Defining our UP vector
+		vec3d vUp = { 0, 1, 0 };
+
+		vector<triangle> vecTriangleToRaster;
 
 		mat4x4 matRotZX = matRotZ * matRotX;
 
 		for (auto tri : meshDemo.tris)
 		{
-			triangle triProjected, triTranslated, triRotatedZX;
+			triangle triProjected, triTransformed;
 
-			MultiplyTriangleMatrix(tri, triRotatedZX, matRotZX);
+			MultiplyTriangleMatrix(tri, triTransformed, matWorld);
 
-			triTranslated = triRotatedZX;
-			triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
-			triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
-			triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
-
-			vec3d normal = GetTriangleNormal(triTranslated);
-			if(ComputeDotProduct(normal, (triTranslated.p[0] - vCamera)) < 0.0f)
+			vec3d normal = GetTriangleNormal(triTransformed);
+			vec3d vCameraRay = triTransformed.p[0] - vCamera;
+			if(ComputeDotProduct(normal, vCameraRay) < 0.0f)
 			{
 				float light_dp = ComputeDotProduct(normal, light_direction);
 
 				CHAR_INFO c = GetColour(light_dp);
-				triTranslated.col = c.Attributes;
-				triTranslated.sym = c.Char.UnicodeChar;
+				triTransformed.col = c.Attributes;
+				triTransformed.sym = c.Char.UnicodeChar;
 
-				MultiplyTriangleMatrix(triTranslated, triProjected, matProj);
+				MultiplyTriangleMatrix(triTransformed, triProjected, matProj);
 				triProjected.col = c.Attributes;
 				triProjected.sym = c.Char.UnicodeChar;
 
@@ -124,8 +122,6 @@ public:
 			//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
 			//	triProjected.p[2].x, triProjected.p[2].y, PIXEL_QUARTER, FG_BLACK);
 		}
-
-		vecTriangleToRaster.clear();
 		return true;
 	}
 };

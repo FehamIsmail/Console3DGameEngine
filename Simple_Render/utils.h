@@ -124,9 +124,15 @@ struct mat4x4 //4x4 Matrix
 	
 };
 
-void NormalizeVector(vec3d& v)
+float GetVectorLength(vec3d& v)
 {
 	float l = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+	return l;
+}
+
+void NormalizeVector(vec3d& v)
+{
+	float l = GetVectorLength(v);
 	v.x /= l; v.y /= l; v.z /= l;
 }
 
@@ -141,6 +147,29 @@ void MultiplyVectorMatrix(vec3d& i, vec3d& o, mat4x4& m)
 	{
 		o.x /= w; o.y /= w; o.z /= w;
 	}
+}
+
+mat4x4 CreateIdentityMatrix()
+{
+	mat4x4 matrix;
+	matrix.m[0][0] = 1.0f;
+	matrix.m[1][1] = 1.0f;
+	matrix.m[2][2] = 1.0f;
+	matrix.m[3][3] = 1.0f;
+	return matrix;
+}
+
+mat4x4 CreateProjectMatrix(float fFovDegrees, float fAspectRatio, float fNear, float fFar)
+{
+	float fFovRad = 1.0f / tanf(fFovDegrees * 0.5f / 180.0f * 3.14159f);
+	mat4x4 matProj;
+	matProj.m[0][0] = fAspectRatio * fFovRad;
+	matProj.m[1][1] = fFovRad;
+	matProj.m[2][2] = fFar / (fFar - fNear);
+	matProj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
+	matProj.m[2][3] = 1.0f;
+	matProj.m[3][3] = 0.0f;
+	return matProj;
 }
 
 void MultiplyTriangleMatrix(triangle& i, triangle& o, mat4x4& m)
@@ -159,16 +188,16 @@ vec3d CreateVector(float x, float y, float z)
 	return v;
 }
 
-mat4x4 CreateTranslationMatrix(vec3d& t)
+mat4x4 CreateTranslationMatrix(float x, float y, float z)
 {
 	mat4x4 m;
 	m.m[0][0] = 1;
-	m.m[0][3] = t.x;
 	m.m[1][1] = 1;
-	m.m[1][3] = t.y;
 	m.m[2][2] = 1;
-	m.m[2][3] = t.z;
 	m.m[3][3] = 1;
+	m.m[3][0] = x;
+	m.m[3][1] = y;
+	m.m[3][2] = z;
 	return m;
 }
 
@@ -196,7 +225,7 @@ mat4x4 CreateRotationMatrixX(float fTheta)
 	return m;
 }
 
-vec3d GetLineFromPoints(vec3d p1, vec3d p2)
+vec3d GetLineFromPoints(vec3d& p1, vec3d& p2)
 {
 	vec3d line;
 	line.x = p2.x - p1.x;
@@ -205,7 +234,7 @@ vec3d GetLineFromPoints(vec3d p1, vec3d p2)
 	return line;
 }
 
-vec3d ComputeCrossProduct(vec3d v1, vec3d v2)
+vec3d ComputeCrossProduct(vec3d& v1, vec3d& v2)
 {
 	vec3d result;
 	result.x = v1.y * v2.z - v1.z * v2.y;
@@ -214,13 +243,13 @@ vec3d ComputeCrossProduct(vec3d v1, vec3d v2)
 	return result;
 }
 
-float ComputeDotProduct(vec3d v1, vec3d v2)
+float ComputeDotProduct(vec3d& v1, vec3d& v2)
 {
 	float result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 	return result;
 }
 
-vec3d GetTriangleNormal(triangle tri)
+vec3d GetTriangleNormal(triangle& tri)
 {
 	vec3d normal, line1, line2;
 	line1 = GetLineFromPoints(tri.p[0], tri.p[1]);
@@ -228,6 +257,30 @@ vec3d GetTriangleNormal(triangle tri)
 	normal = ComputeCrossProduct(line1, line2);
 	NormalizeVector(normal);
 	return normal;
+}
+
+mat4x4 Matrix_PointAt(vec3d& pos, vec3d& target, vec3d& up)
+{
+	// Calculate new forward direction
+	vec3d newForward = target - pos;
+	NormalizeVector(newForward);
+
+	// Calculate new Up direction
+	vec3d a = newForward * ComputeDotProduct(up, newForward);
+	vec3d newUp = up - a;
+	NormalizeVector(newUp);
+
+	// New Right direction is easy, its just cross product
+	vec3d newRight = ComputeCrossProduct(newUp, newForward);
+
+	// Construct Dimensioning and Translation Matrix	
+	mat4x4 matrix;
+	matrix.m[0][0] = newRight.x;	matrix.m[0][1] = newRight.y;	matrix.m[0][2] = newRight.z;	matrix.m[0][3] = 0.0f;
+	matrix.m[1][0] = newUp.x;		matrix.m[1][1] = newUp.y;		matrix.m[1][2] = newUp.z;		matrix.m[1][3] = 0.0f;
+	matrix.m[2][0] = newForward.x;	matrix.m[2][1] = newForward.y;	matrix.m[2][2] = newForward.z;	matrix.m[2][3] = 0.0f;
+	matrix.m[3][0] = pos.x;			matrix.m[3][1] = pos.y;			matrix.m[3][2] = pos.z;			matrix.m[3][3] = 1.0f;
+	return matrix;
+
 }
 
 mesh CreateCuboidMesh(vec3d& origin, vec3d& size)
