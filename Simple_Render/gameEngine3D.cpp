@@ -1,6 +1,7 @@
 #include "oldConsoleGameEngine.h"
 #include "utils.h"
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -18,7 +19,9 @@ private:
 	mat4x4 matProj;
 	vec3d vCamera; // Simplified version of a camera
 	vec3d light_direction; // Simple directional light source
+	vector<triangle> vecTriangleToRaster;
 	float fTheta = 0;
+
 
 public:
 	bool OnUserCreate() override
@@ -97,15 +100,32 @@ public:
 
 				ScaleToScreenSize(triProjected, (float)ScreenWidth(), (float)ScreenHeight());
 
-				FillTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
-					triProjected.p[2].x, triProjected.p[2].y, triProjected.sym, triProjected.col);
-
-				// Keeping this method for debugging purposes
-				// Allows the user to see the wireframe outline of triangles
-				//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
-				//	triProjected.p[2].x, triProjected.p[2].y, PIXEL_SOLID, FG_BLACK);
+				vecTriangleToRaster.push_back(triProjected);
 			}
 		}
+
+		sort(vecTriangleToRaster.begin(), vecTriangleToRaster.end(), [](triangle& t1, triangle& t2)
+		{
+			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+			return z1 > z2;
+		});
+
+		for (auto& triProjected : vecTriangleToRaster)
+		{
+			// Renders the triangle
+			FillTriangle(triProjected.p[0].x, triProjected.p[0].y, 
+				triProjected.p[1].x, triProjected.p[1].y,
+				triProjected.p[2].x, triProjected.p[2].y, 
+				triProjected.sym, triProjected.col);
+
+			// Keeping this method for debugging purposes
+			// Allows the user to see the wireframe outline of triangles
+			//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
+			//	triProjected.p[2].x, triProjected.p[2].y, PIXEL_QUARTER, FG_BLACK);
+		}
+
+		vecTriangleToRaster.clear();
 		return true;
 	}
 };
