@@ -14,7 +14,7 @@ public:
 	}
 
 private:
-	mesh meshCube;
+	mesh meshDemo;
 	mat4x4 matProj;
 	vec3d vCamera; // Simplified version of a camera
 	vec3d light_direction; // Simple directional light source
@@ -24,9 +24,12 @@ public:
 	bool OnUserCreate() override
 	{
 		// Creating a simple unit cube (sides length = 1)
-		vec3d origin = CreateVector(0, 0, 0);
-		vec3d size = CreateVector(1, 1, 1);
-		meshCube = CreateCuboidMesh(origin, size);
+		//vec3d origin = CreateVector(0, 0, 0);
+		//vec3d size = CreateVector(1, 1, 1);
+		//meshDemo = CreateCuboidMesh(origin, size);
+
+		// Loading a .obj file
+		meshDemo.LoadFromObjFile("assets/monkey.obj");
 
 		// Creating Projection Matrix
 
@@ -68,7 +71,7 @@ public:
 
 		mat4x4 matRotZX = matRotZ * matRotX;
 
-		for (auto tri : meshCube.tris)
+		for (auto tri : meshDemo.tris)
 		{
 			triangle triProjected, triTranslated, triRotatedZX;
 
