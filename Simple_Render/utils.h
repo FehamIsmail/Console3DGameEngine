@@ -257,6 +257,27 @@ mat4x4 CreateRotationMatrixX(float fTheta)
 	return m;
 }
 
+mat4x4 CreateRotationMatrixAroundCustomAxis(float fTheta, vec3d axis)
+{
+	float c = cos(fTheta);
+	float s = sin(fTheta);
+	float t = 1.0f - c;
+
+	float x, y, z;
+	x = axis.x;
+	y = axis.y;
+	z = axis.z;
+
+	mat4x4 matrix;
+	matrix.m[0][0] = t * x * x + c;     matrix.m[0][1] = t * x * y + s * z; matrix.m[0][2] = t * x * z - s * y; matrix.m[0][3] = 0;
+	matrix.m[1][0] = t * x * y - s * z; matrix.m[1][1] = t * y * y + c;     matrix.m[1][2] = t * y * z + s * x; matrix.m[1][3] = 0;
+	matrix.m[2][0] = t * x * z + s * y; matrix.m[2][1] = t * y * z - s * x; matrix.m[2][2] = t * z * z + c;     matrix.m[2][3] = 0;
+	matrix.m[3][0] = 0;                 matrix.m[3][1] = 0;                 matrix.m[3][2] = 0;                 matrix.m[3][3] = 1;
+
+	return matrix;
+}
+
+
 vec3d GetLineFromPoints(vec3d& p1, vec3d& p2)
 {
 	vec3d line;

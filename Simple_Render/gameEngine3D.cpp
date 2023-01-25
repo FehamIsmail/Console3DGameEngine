@@ -26,8 +26,9 @@ private:
 	mat4x4 matProj;
 	player p;
 	float fYaw;
-	vec3d vCamera; // Simplified version of a camera
-	vec3d vLookDir; // Camera's looking direction
+	float fPitch = 0;
+	vec3d vCamera = { 0.0f, 10.0f, 0.0f }; // Simplified version of a camera
+	vec3d vLookDir = { 0,0,1 }; // Camera's looking direction
 	vec3d light_direction; // Simple directional light source
 	float fTheta = 0;
 
@@ -41,7 +42,7 @@ public:
 		//meshDemo = CreateCuboidMesh(origin, size);
 
 		// Loading a .obj file
-		meshDemo.LoadFromObjFile("assets/axis.obj");
+		meshDemo.LoadFromObjFile("assets/mountains.obj");
 
 		// Creating Projection Matrix
 		float fNear = 0.1f;
@@ -60,35 +61,42 @@ public:
 		if (GetKey(VK_LSHIFT).bHeld)
 			vCamera.y -= 8.0f * fElapsedTime;
 
-		if (GetKey(L'A').bHeld)
-		{ 
-			vCamera.z += sinf(fYaw) * 8.0f * fElapsedTime * cosf(fYaw);
-			vCamera.x += cosf(fYaw) * cosf(fYaw) * 8.0f * fElapsedTime;
-		}
-		if (GetKey(L'D').bHeld)
-		{ 
-			vCamera.z -= sinf(fYaw) * 8.0f * fElapsedTime * cosf(fYaw);
-			vCamera.x -= cosf(fYaw) * 8.0f * fElapsedTime * cosf(fYaw);
-		}
-
 		vec3d vForward = vLookDir * (8.0f * fElapsedTime);
+		mat4x4 mRotateLeft = CreateRotationMatrixY(-3.14159265f/2.0f);
+		mat4x4 mRotateRight = CreateRotationMatrixY(3.14159265f/2.0f);
+		vec3d vForwardLeft;
+		vec3d vForwardRight;
+		MultiplyVectorMatrix(vForward, vForwardLeft, mRotateLeft);
+		MultiplyVectorMatrix(vForward, vForwardRight, mRotateRight);
+		vForwardLeft.y = 0;
+		vForwardRight.y = 0;
 
 		if (GetKey(L'W').bHeld)
 			vCamera += vForward;
 		if (GetKey(L'S').bHeld)
 			vCamera -= vForward;
+		if (GetKey(L'A').bHeld)
+		{
+			vCamera += vForwardLeft;
+		}
+		if (GetKey(L'D').bHeld)
+		{
+			vCamera += vForwardRight;
+		}
 		
 		if (GetKey(VK_RIGHT).bHeld)
 			fYaw += 2.0f * fElapsedTime;
 		if (GetKey(VK_LEFT).bHeld)
 			fYaw -= 2.0f * fElapsedTime;
+		if (GetKey(VK_UP).bHeld)
+			fPitch -= 1.0f * fElapsedTime;
+		if (GetKey(VK_DOWN).bHeld)
+			fPitch += 1.0f * fElapsedTime;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		UpdateCameraOnUserInput(vCamera, fElapsedTime);
-
-		//Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 		
 		mat4x4 matRotZ, matRotX;
 		//fTheta += 1.0f * fElapsedTime;
@@ -110,7 +118,13 @@ public:
 		// Creating Camera matrix
 		vec3d vUp = { 0, 1, 0 };
 		vec3d vTarget = { 0, 0, 1 };
-		mat4x4 matCameraRot = CreateRotationMatrixY(fYaw);
+		mat4x4 matCameraYawRot = CreateRotationMatrixY(fYaw);
+		vec3d vCustomAxis = ComputeCrossProduct(vUp, vLookDir);
+		NormalizeVector(vCustomAxis);
+
+		//Update Camera properties
+		mat4x4 matCameraPitchRot = CreateRotationMatrixAroundCustomAxis(fPitch, vCustomAxis);
+		mat4x4 matCameraRot = matCameraYawRot * matCameraPitchRot;
 		MultiplyVectorMatrix(vTarget, vLookDir, matCameraRot);
 		vTarget = vCamera + vLookDir;
 		
